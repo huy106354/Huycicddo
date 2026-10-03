@@ -39,6 +39,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Bước 1b: Chuyển tên image thành chữ thường (GHCR và Docker bắt buộc chữ thường)
+      - name: Ha chu thuong ten image
+        run: |
+          IMAGE_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=ghcr.io/${IMAGE_LOWER}/web" >> $GITHUB_ENV
+
       # Bước 2: Đăng nhập GHCR
       # secrets.GITHUB_TOKEN do GitHub tự cấp, không cần tự tạo secret
       - name: Login to GHCR
@@ -51,20 +57,17 @@ jobs:
       # Bước 3: Chạy smoke test TRƯỚC khi push
       # Script tự dựng Postgres + web rồi kiểm tra 8 điểm.
       # Hỏng -> job dừng ngay, bước push bên dưới không chạy.
-      #
-      # LƯU Ý: script tự build từ source, nên đây là LẦN BUILD THỨ NHẤT.
-      # Bước 5 sẽ build lại lần nữa. Hai image đó thường giống nhau nhưng
-      # không có gì đảm bảo tuyệt đối. ci.yml giải quyết bằng cách build
-      # 1 lần rồi test đúng image đó.
       - name: Smoke test
         run: |
           chmod +x scripts/smoke-test.sh
           ./scripts/smoke-test.sh
 
-      # Bước 4: Cài QEMU để build được kiến trúc khác máy runner
-      # Runner là amd64; muốn có thêm bản arm64 (Mac M-series) thì cần giả lập.
+      # Bước 4: Cài QEMU và Buildx để build được image đa kiến trúc
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       # Bước 5: Build và push image đa kiến trúc
       # platforms tạo "manifest list": 1 tag chứa cả 2 bản.
@@ -78,3 +81,5 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

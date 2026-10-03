@@ -82,13 +82,13 @@ $COMPOSE up $UP_ARGS
 
 echo ""
 echo "=== Chờ web sẵn sàng ==="
-for i in $(seq 1 30); do
+for i in $(seq 1 60); do
   if curl -sf "$BASE/api/health" >/dev/null 2>&1; then
     echo "  sẵn sàng sau ${i}s"
     break
   fi
-  if [[ $i -eq 30 ]]; then
-    echo "  TIMEOUT sau 30s - log của web:"
+  if [[ $i -eq 60 ]]; then
+    echo "  TIMEOUT sau 60s - log của web:"
     $COMPOSE logs web
     exit 1
   fi
